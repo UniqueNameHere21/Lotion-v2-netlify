@@ -12,64 +12,81 @@ provider "aws" {
   region = "ca-central-1"
 }
 
-# the locals block is used to declare constants that 
-# you can use throughout your code
-locals {
-  function_name = "hello-world"
-  handler_name  = "main.handler"
-  artifact_name = "${local.function_name}/artifact.zip"
-}
-
-# Create an S3 bucket
-# if you omit the name, Terraform will assign a random name to it
-# see the docs: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket
+# s3 bucket
 resource "aws_s3_bucket" "lambda" {}
+#output the name of bucket after creation
+output "bucket_name" {
+  value = aws_s3_bucket.lambda.id
+}
 
-# create a role for the Lambda function to assume
-# every service on AWS that wants to call other AWS services should first assume a role and
-# then any policy attached to the role will give permissions
-# to the service so it can interact with other AWS services
-# see the docs: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
-resource "aws_iam_role" "lambda" {
-  name               = "iam-for-lambda-${local.function_name}"
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
+#constants
+locals{
+    function_delete = "delete-note-30139550"
+    function_get = "get-notes-30139550"
+    function_save = "save-note-30139550"
+    handler_name = "main.handler"
+    artifact_delete = "${local.function_delete}/artifact.zip"
+    artifact_get = "${local.function_get}/artifact.zip"
+    artifact_save = "${local.function_save}/artifact.zip"
+}
+
+#create role for lambda functions to assume
+resource "aws_iam_role" "lambda"{
+    name = "iam-for-lambda"
+    assume_role_policy = <<EOF
     {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "lambda.amazonaws.com"
-      },
-      "Effect": "Allow",
-      "Sid": ""
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Action": "sts:AssumeRole",
+                "Principal": {
+                    "Service": "lambda.amazonaws.com"
+                },
+                "Effect": "Allow",
+                "Sid": ""
+            }
+        ]
     }
-  ]
-}
-EOF
+    EOF
 }
 
-# create a Lambda function
-# see the docs: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function
-resource "aws_lambda_function" "lambda" {
-  s3_bucket = aws_s3_bucket.lambda.bucket
-  # the artifact needs to be in the bucket first. Otherwise, this will fail.
-  s3_key        = local.artifact_name
-  role          = aws_iam_role.lambda.arn
-  function_name = local.function_name
-  handler       = local.handler_name
+#create lambda functions
+resource "aws_lambda_function" "delete-note"{
+    s3_bucket = aws_s3_bucket.lambda.bucket
+    s3_key = local.artifact_delete
+    role = aws_iam_role.lambda.arn
+    function_name = local.function_delete
+    handler = local.handler_name
 
-  # see all available runtimes here: https://docs.aws.amazon.com/lambda/latest/dg/API_CreateFunction.html#SSS-CreateFunction-request-Runtime
-  runtime = "python3.9"
+    runtime = "python3.9"
 }
 
-# create a policy for publishing logs to CloudWatch
-# see the docs: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy
-resource "aws_iam_policy" "logs" {
-  name        = "lambda-logging-${local.function_name}"
-  description = "IAM policy for logging from a lambda"
+resource "aws_lambda_function" "get-notes" {
+    s3_bucket = aws_s3_bucket.lambda.bucket
+    s3_key = local.artifact_get
+    role = aws_iam_role.lambda.arn
+    function_name = local.function_get
+    handler = local.handler_name
 
-  policy = <<EOF
+    runtime = "python3.9"
+}
+
+resource "aws_lambda_function" "save-note" {
+    s3_bucket = aws_s3_bucket.lambda.bucket
+    s3_key = local.artifact_save
+    role = aws_iam_role.lambda.arn
+    function_name = local.function_save
+    handler = local.handler_name
+
+    runtime = "python3.9"
+}
+
+#Cloudwatch log publishing policy
+resource "aws_iam_policy" "logs"{
+    name = "lambda-logging"
+    description = "IAM policy for logging from a lambda"
+
+    policy = <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -87,14 +104,83 @@ resource "aws_iam_policy" "logs" {
 EOF
 }
 
-# attach the above policy to the function role
-# see the docs: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment
-resource "aws_iam_role_policy_attachment" "lambda_logs" {
-  role       = aws_iam_role.lambda.name
-  policy_arn = aws_iam_policy.logs.arn
+#attach policy to function role
+resource "aws_iam_role_policy_attachment" "mabda_logs"{
+    role = aws_iam_role.lambda.name
+    policy_arn = aws_iam_policy.logs.arn
 }
 
-# output the name of the bucket after creation
-output "bucket_name" {
-  value = aws_s3_bucket.lambda.bucket
+
+#create dynamodb table
+resource "aws_dynamodb_table" "lotion-30139550" {
+    name = "notes"
+    billing_mode = "PROVISIONED"
+
+    read_capacity = 1
+    write_capacity = 1
+
+    hash_key = "email"
+    range_key = "id"
+
+    attribute {
+        name = "email"
+        type = "S"
+    }
+
+    attribute {
+        name = "id"
+        type = "S"
+    }
 }
+
+#Create URLs and output
+resource "aws_lambda_function_url" "url-delete-note"{
+    function_name = aws_lambda_function.delete-note.function_name
+    authorization_type = "NONE"
+
+    cors{
+        allow_credentials = true
+        allow_origins = ["*"]
+        allow_methods = ["DELETE"]
+        allow_headers = ["*"]
+        expose_headers = ["keep-alive", "date"]
+    }
+}
+
+# output "url-delete-note" {
+#     value = aws_lambda_function_url.url-delete-note.function_url
+# }
+
+resource "aws_lambda_function_url" "url-get-notes"{
+    function_name = aws_lambda_function.get-notes.function_name
+    authorization_type = "NONE"
+
+    cors{
+        allow_credentials = true
+        allow_origins = ["*"]
+        allow_methods = ["GET"]
+        allow_headers = ["*"]
+        expose_headers = ["keep-alive", "date"]
+    }
+}
+
+# output "url-get-notes" {
+#     value = aws_lambda_function_url.url-get-notes.function_url
+# }
+
+resource "aws_lambda_function_url" "url-save-note"{
+    function_name = aws_lambda_function.save-note.function_name
+    authorization_type = "NONE"
+
+    cors{
+        allow_credentials = true
+        allow_origins = ["*"]
+        allow_methods = ["POST"]
+        allow_headers = ["*"]
+        expose_headers = ["keep-alive", "date"]
+    }
+}
+  
+# output "url-save-note" {
+#     value = aws_lambda_function_url.url-save-note.function_url
+# }

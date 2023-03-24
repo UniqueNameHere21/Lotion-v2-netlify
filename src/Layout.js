@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Outlet, useNavigate, Link } from "react-router-dom";
+import { Outlet, useNavigate, Link, json } from "react-router-dom";
 import NoteList from "./NoteList";
 import { v4 as uuidv4 } from "uuid";
 import { currentDate } from "./utils";
@@ -14,14 +14,7 @@ function Layout() {
   const [user, setUser] = useState([]);
   const [profile, setProfile] = useState(null);
 
-  const login = useGoogleLogin({
-    onSuccess: (res) => {
-      setUser(res);
-      document.getElementById("login").style.display = "none";
-      document.getElementById("main-container").style.visibility = "visible";
-    },
-    onError: (err) => console.log("ERROR", err)
-  })
+  
 
   
 
@@ -31,6 +24,16 @@ function Layout() {
   const [notes, setNotes] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [currentNote, setCurrentNote] = useState(-1);
+
+  const login = useGoogleLogin({
+    onSuccess: (res) => {
+      setUser(res);
+      document.getElementById("login").style.display = "none";
+      document.getElementById("main-container").style.visibility = "visible";
+      
+    },
+    onError: (err) => console.log("ERROR", err)
+  })
 
   useEffect(() => {
     const height = mainContainerRef.current.offsetHeight;
@@ -63,6 +66,7 @@ function Layout() {
   useEffect(
     () => {
         if (user) {
+          console.log("ACCESS:", user);
             axios
                 .get(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${user.access_token}`, {
                     headers: {
@@ -72,15 +76,43 @@ function Layout() {
                 })
                 .then((res) => {
                     setProfile(res.data);
+                    
                 })
                 .catch((err) => console.log(err));
+          console.log("PROFILE:", profile);
         }
     },
     [ user ]
   );
 
-  const saveNote = (note, index) => {
+  useEffect(() => {
+    const asyncEffect = async () => {
+      if(profile){
+        console.log("CALLING");
+        const email = profile.email;
+        const promise = await fetch(`https://dkjvyqevqhex3tzrgdsgeurfuy0ndwvp.lambda-url.ca-central-1.on.aws/?email=${email}`);
+        if(promise.status === 200){
+          const notes = await promise.json();
+          console.log("NOTES:", notes.body.Items);
+          setNotes(notes.body.Items);
+        } else{
+          console.log("ERROR:", promise);
+        }
+      }
+    };
+    asyncEffect();
+  }, [profile]);
+
+  const saveNote = async(note, index) => {
+    console.log("CurrentNote", note);
+    console.log("EMAIL", profile.email);
+    
+    // axios.get(`https://iqtxneym2zmxqh5gn5lcbbvtna0zvxyq.lambda-url.ca-central-1.on.aws/`,{
+    //       email: profile.email,
+    //       note: note
+    //  }).catch((err) => console.log(err));
     note.body = note.body.replaceAll("<p><br></p>", "");
+
     setNotes([
       ...notes.slice(0, index),
       { ...note },
@@ -88,6 +120,10 @@ function Layout() {
     ]);
     setCurrentNote(index);
     setEditMode(false);
+    const res = await fetch(`https://iqtxneym2zmxqh5gn5lcbbvtna0zvxyq.lambda-url.ca-central-1.on.aws/`,{
+      email: profile.email,
+      note: JSON.stringify(note)
+    }).then((res) => console.log("SUCCESS").catch((err) => console.log(err)));
   };
 
   const deleteNote = (index) => {
