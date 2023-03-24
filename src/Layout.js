@@ -3,21 +3,27 @@ import { Outlet, useNavigate, Link } from "react-router-dom";
 import NoteList from "./NoteList";
 import { v4 as uuidv4 } from "uuid";
 import { currentDate } from "./utils";
-import { GoogleLogin } from "@react-oauth/google";
+import { googleLogout, useGoogleLogin} from "@react-oauth/google";
+import axios from "axios";
+
 
 const localStorageKey = "lotion-v1";
 
 function Layout() {
 
-  const responseMessage = (response) => {
-    document.getElementById("login").style.display = "none";
-    document.getElementById("main-container").style.visibility = "visible";
-    console.log("SUCCESS", response);
-  };
+  const [user, setUser] = useState([]);
+  const [profile, setProfile] = useState(null);
 
-  const errorMessage = (error) => {
-    console.log("Error", error);
-  };
+  const login = useGoogleLogin({
+    onSuccess: (res) => {
+      setUser(res);
+      document.getElementById("login").style.display = "none";
+      document.getElementById("main-container").style.visibility = "visible";
+    },
+    onError: (err) => console.log("ERROR", err)
+  })
+
+  
 
   const navigate = useNavigate();
   const mainContainerRef = useRef(null);
@@ -54,6 +60,25 @@ function Layout() {
     navigate(`/notes/${currentNote + 1}/edit`);
   }, [notes]);
 
+  useEffect(
+    () => {
+        if (user) {
+            axios
+                .get(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${user.access_token}`, {
+                    headers: {
+                        Authorization: `Bearer ${user.access_token}`,
+                        Accept: 'application/json'
+                    }
+                })
+                .then((res) => {
+                    setProfile(res.data);
+                })
+                .catch((err) => console.log(err));
+        }
+    },
+    [ user ]
+  );
+
   const saveNote = (note, index) => {
     note.body = note.body.replaceAll("<p><br></p>", "");
     setNotes([
@@ -85,6 +110,14 @@ function Layout() {
     setCurrentNote(0);
   };
 
+  const logout = () => {
+    googleLogout();
+    //setUser(null);
+    setProfile(null);
+    document.getElementById("login").style.display = "block";
+    document.getElementById("main-container").style.visibility = "hidden";
+  };
+
   return (
     <div id="container">
       <header>
@@ -99,11 +132,9 @@ function Layout() {
           </h1>
           <h6 id="app-moto">Like Notion, but worse.</h6>
         </div>
-        <aside>&nbsp;</aside>
+        <aside id="logout">{profile ? (<button onClick={logout}>{profile.name} (Logout)</button>):(<p>&nbsp;</p>)}</aside>
       </header>
-      <div id="login">
-        <GoogleLogin onSuccess={responseMessage} onFailure={errorMessage} />
-      </div>
+      <div id="login"><button onClick={() => login()}>Sign in with Google</button></div>
       <div id="main-container" ref={mainContainerRef}>
         <aside id="sidebar" className={collapse ? "hidden" : null}>
           <header>
