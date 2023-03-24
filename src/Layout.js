@@ -3,10 +3,22 @@ import { Outlet, useNavigate, Link } from "react-router-dom";
 import NoteList from "./NoteList";
 import { v4 as uuidv4 } from "uuid";
 import { currentDate } from "./utils";
+import { GoogleLogin } from "@react-oauth/google";
 
 const localStorageKey = "lotion-v1";
 
 function Layout() {
+
+  const responseMessage = (response) => {
+    document.getElementById("login").style.display = "none";
+    document.getElementById("main-container").style.visibility = "visible";
+    console.log("SUCCESS", response);
+  };
+
+  const errorMessage = (error) => {
+    console.log("Error", error);
+  };
+
   const navigate = useNavigate();
   const mainContainerRef = useRef(null);
   const [collapse, setCollapse] = useState(false);
@@ -89,6 +101,9 @@ function Layout() {
         </div>
         <aside>&nbsp;</aside>
       </header>
+      <div id="login">
+        <GoogleLogin onSuccess={responseMessage} onFailure={errorMessage} />
+      </div>
       <div id="main-container" ref={mainContainerRef}>
         <aside id="sidebar" className={collapse ? "hidden" : null}>
           <header>

@@ -14,6 +14,9 @@ function WriteBox({ edit }) {
   if (noteId >= 0 && notes.length > noteId) {
     currentNote = notes[noteId];
   }
+
+
+  
   const [noteBody, setNoteBody] = useState("");
   const [noteTitle, setNoteTitle] = useState("");
   const [noteWhen, setNoteWhen] = useState();

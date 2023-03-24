@@ -78,9 +78,17 @@ button:hover,
   padding-top: 4px;
 }
 #main-container {
+  /*display: flex;*/
+  visibility: hidden;
   display: flex;
   flex: 1;
 }
+
+#login{
+  margin: 0 auto;
+  margin-top: 30vh;
+}
+
 #write-box {
   flex: 1;
   overflow-y: auto;
