@@ -2,5 +2,4 @@
 
 Put your names and UCIDs here:
 
-- Member #1: Name -- UCID
-- Member #2: Name -- UCID
+- Member #1: Mason Bullock -- 30139550
