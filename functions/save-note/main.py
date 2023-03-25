@@ -1,27 +1,28 @@
 # add your save-note function here
 import boto3
+import json
 
 #create a dynamodb resource
-dynamodb_resource = boto3.resource('dynamodb')
+dynamodb_resource = boto3.resource("dynamodb")
 #create a table object
-table = dynamodb_resource.Table('notes')
+table = dynamodb_resource.Table("lotion-30139550")
 
-def lambda_handler(email, note):
-    try:
-        return table.update_item(
-            Key={
-                "email": email,
-                "id": note["id"]
-            },
-            UpdateExpression="set title=:t, body=:b, when=:w",
-            ExpressionAttributeValues={"t": note["title"], "b": note["body"], "w": note["when"]},
-        )
-    except:
-        note["email"] = email
-        table.put_item(
-            table.put_item(Item=note)
-        )
-        return "SUCCESS"
-
-    
-    
+def handler(event, context):
+    hm = event["requestContext"]["http"]["method"].lower()
+    body = json.loads(event["body"])
+    if hm == "put":
+        try:
+            table.put_item(Item=body)
+            return{
+                "status":200,
+                "body": json.dumps({
+                    "message": "SUCCESS"
+                })
+            }
+        except Exception as exp:
+            return{
+                "status": 500,
+                "body": json.dumps({
+                    "message": str(exp)
+                })
+            }

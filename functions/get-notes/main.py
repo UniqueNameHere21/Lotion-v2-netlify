@@ -1,9 +1,13 @@
 # add your get-notes function here
+
 import boto3
 from boto3.dynamodb.conditions import Key
-
+import json
+#create a dynamodb resource
 dynamodb_resource = boto3.resource('dynamodb', region_name='ca-central-1')
-table = dynamodb_resource.Table('notes')
+# #create a table object
+table = dynamodb_resource.Table('lotion-30139550')
+
 
 def handler(event, context):
     email = event["queryStringParameters"]["email"]
@@ -12,4 +16,5 @@ def handler(event, context):
         "status": 200,
         "body": items,
     }
+    
     

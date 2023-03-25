@@ -116,7 +116,7 @@ function Layout() {
     setEditMode(false);
 
     const res = await fetch("https://iqtxneym2zmxqh5gn5lcbbvtna0zvxyq.lambda-url.ca-central-1.on.aws/",{
-    method: "POST",
+    method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
@@ -127,7 +127,7 @@ function Layout() {
       title: note.title,
       when: note.when
     })
-  }).catch((err) => console.log(err));
+  });
   };
 
   const deleteNote = async(index) => {

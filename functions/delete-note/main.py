@@ -1,21 +1,35 @@
-# add your delete-note function here
+# add your save-note function here
 import boto3
-from google.oauth2 import id_token
-from google.auth.transport import requests
+import json
+
 #create a dynamodb resource
-dynamodb_resource = boto3.resource('dynamodb')
+dynamodb_resource = boto3.resource('dynamodb', region_name="ca-central-1")
 #create a table object
-table = dynamodb_resource.Table('notes')
+table = dynamodb_resource.Table('lotion-30139550')
 
-def lambda_handler(email, note):
+def handler(event, context):
+    email = event["queryStringParameters"]["email"]
+    id = event["queryStringParameters"]["id"]
+    hm = event["requestContext"]["http"]["method"].lower()
+    if hm == "delete":
+        try:
+            table.delete_item(Key={
+                "email": email,
+                "id": id,
+            })
+            return{
+                "status": 200,
+                "body": "SUCCESS"
+            }
+        except Exception as e: 
+            return{
+                "status": 500,
+                "body": json.dumps({
+                    "message": str(e)
+                })
+            }
+
     
-    #token = event["queryStringParameters"]["token"]
-    return table.delete_item(
-        Key={
-            "email": email,
-            "id": note["id"]
-        }
-    )
-
+    
     
     
