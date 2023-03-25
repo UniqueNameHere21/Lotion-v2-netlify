@@ -106,13 +106,7 @@ function Layout() {
   const saveNote = async(note, index) => {
     console.log("CurrentNote", note);
     console.log("EMAIL", profile.email);
-    
-    // axios.get(`https://iqtxneym2zmxqh5gn5lcbbvtna0zvxyq.lambda-url.ca-central-1.on.aws/`,{
-    //       email: profile.email,
-    //       note: note
-    //  }).catch((err) => console.log(err));
     note.body = note.body.replaceAll("<p><br></p>", "");
-
     setNotes([
       ...notes.slice(0, index),
       { ...note },
@@ -120,13 +114,36 @@ function Layout() {
     ]);
     setCurrentNote(index);
     setEditMode(false);
-    const res = await fetch(`https://iqtxneym2zmxqh5gn5lcbbvtna0zvxyq.lambda-url.ca-central-1.on.aws/`,{
+
+    const res = await fetch("https://iqtxneym2zmxqh5gn5lcbbvtna0zvxyq.lambda-url.ca-central-1.on.aws/",{
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
       email: profile.email,
-      note: JSON.stringify(note)
-    }).then((res) => console.log("SUCCESS").catch((err) => console.log(err)));
+      id: note.id,
+      body: note.body,
+      title: note.title,
+      when: note.when
+    })
+  }).catch((err) => console.log(err));
   };
 
-  const deleteNote = (index) => {
+  const deleteNote = async(index) => {
+    const noteId = notes[index].id;
+    const email = profile.email;
+
+    const res = await fetch (`https://os26howbxdbaahi2vdjmkqq44m0pduce.lambda-url.ca-central-1.on.aws?email=${email}&id=${noteId}`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({email:email, ...notes[index]})
+    });
+
+
     setNotes([...notes.slice(0, index), ...notes.slice(index + 1)]);
     setCurrentNote(0);
     setEditMode(false);
